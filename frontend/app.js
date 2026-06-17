@@ -317,6 +317,17 @@ function closeShare() {
   document.getElementById("share-modal").classList.add("hidden");
 }
 
+// Close the modal when clicking the dark backdrop (but not the white box itself),
+// so an open popup can never block the tabs/buttons behind it.
+function closeShareOnBackdrop(e) {
+  if (e.target.id === "share-modal") closeShare();
+}
+
+// Esc also closes the share modal.
+document.addEventListener("keydown", (e) => {
+  if (e.key === "Escape") closeShare();
+});
+
 async function shareWithUser() {
   const email = document.getElementById("share-email").value.trim();
   const msgEl = document.getElementById("share-msg");
