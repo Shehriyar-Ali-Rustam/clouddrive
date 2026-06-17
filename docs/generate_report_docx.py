@@ -118,6 +118,17 @@ def mono(doc, text):
     return p
 
 
+def owner_note(doc, name):
+    """A small italic line crediting the team member who owns a section."""
+    p = doc.add_paragraph()
+    p.paragraph_format.space_after = Pt(6)
+    r = p.add_run("Module owner: " + name)
+    r.italic = True
+    r.font.size = Pt(9.5)
+    r.font.color.rgb = BLUE
+    return p
+
+
 # Section titles (H1) that appear in the Table of Contents
 TOC_TITLES = [
     "1. Introduction", "2. Key Features", "3. System Architecture",
@@ -284,6 +295,18 @@ def build(out=OUT, toc_entries=None):
               "offline development and AWS (S3 + PostgreSQL) for the cloud — selected purely by "
               "configuration, with no code changes.")
 
+    heading(doc, "1.4 Team & Responsibilities", 2)
+    body(doc, "The project was built by three members. Each owns one feature module and a slice of the "
+              "cloud/DevOps work; their names are also noted at the start of the relevant sections below.")
+    add_table(doc, ["Member", "Module / task owned", "Cloud & DevOps contribution"], [
+        ["Touseef Abbas", "Authentication & user accounts (JWT, bcrypt, quotas, isolation)",
+         "Security model, AWS IAM, CI testing"],
+        ["Shehriyar Ali Rustam", "File storage & upload/download (pre-signed URLs, storage layer, folders)",
+         "Amazon S3, Terraform (IaC)"],
+        ["Abdul Ahad", "Sharing & collaboration (user shares, public links, shared-with-me)",
+         "Docker, deployment (Render/ECS), networking"],
+    ], widths=[Inches(1.6), Inches(3.1), Inches(2.6)])
+
     # 2. Features
     heading(doc, "2. Key Features")
     add_table(doc, ["Feature", "Description"], [
@@ -316,6 +339,7 @@ def build(out=OUT, toc_entries=None):
 
     # 4. Upload flow
     heading(doc, "4. The Pre-signed URL Upload Flow")
+    owner_note(doc, "Shehriyar Ali Rustam")
     body(doc, "This is the central cloud concept. The API never streams file bytes; it issues a "
               "short-lived signed permission slip (a pre-signed URL) and the browser uploads directly "
               "to S3. This keeps the API lightweight and horizontally scalable.")
@@ -349,6 +373,7 @@ def build(out=OUT, toc_entries=None):
 
     # 7. Security
     heading(doc, "7. Security Model")
+    owner_note(doc, "Touseef Abbas")
     add_table(doc, ["Control", "How it protects the system"], [
         ["Password hashing", "bcrypt one-way hashes; plaintext never stored"],
         ["JWT auth", "Signed, expiring bearer tokens on every API call"],
@@ -370,6 +395,7 @@ def build(out=OUT, toc_entries=None):
 
     # 9. Containerization with Docker
     heading(doc, "9. Containerization with Docker")
+    owner_note(doc, "Abdul Ahad")
     body(doc, "The application is packaged as a Docker image so it runs identically on any machine "
               "and in the cloud. The Dockerfile installs the dependencies, copies the code, and starts "
               "the API server:")
@@ -396,6 +422,7 @@ def build(out=OUT, toc_entries=None):
 
     # 10. Cloud Storage on S3
     heading(doc, "10. Cloud Storage on Amazon S3")
+    owner_note(doc, "Shehriyar Ali Rustam")
     body(doc, "File bytes are stored in a real Amazon S3 bucket, uploaded directly by the browser via "
               "pre-signed URLs. The bucket has versioning enabled and AES-256 server-side encryption, "
               "and blocks all public access. The screenshot below verifies the live bucket contents "
@@ -405,6 +432,7 @@ def build(out=OUT, toc_entries=None):
 
     # 11. Deployment
     heading(doc, "11. Cloud Deployment")
+    owner_note(doc, "Abdul Ahad")
     body(doc, "The application can be run or deployed three ways, all sharing the same S3 storage:")
     dep = R.pipeline([
         ("Local", ["SQLite + disk", "or S3 mode"]),
@@ -428,6 +456,7 @@ def build(out=OUT, toc_entries=None):
 
     # 13. CI/CD
     heading(doc, "13. CI/CD Pipeline")
+    owner_note(doc, "Touseef Abbas")
     body(doc, "Two GitHub Actions workflows automate delivery: CI runs the tests on every push, and "
               "Deploy builds the Docker image, pushes it to Amazon ECR, and rolls it out on ECS.")
     cicd = R.pipeline([
