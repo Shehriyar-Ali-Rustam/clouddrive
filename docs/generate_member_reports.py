@@ -75,9 +75,9 @@ def detect_pages(pdf_path, titles):
 
 
 TEAM_ROWS = [
-    ["Authentication & User Accounts", "Abdul Ahad"],
+    ["Authentication & User Accounts", "Touseef Abbas"],
     ["File Storage & Upload/Download", "Shehriyar Ali Rustam"],
-    ["Sharing & Collaboration", "Touseef Abbas"],
+    ["Sharing & Collaboration (+ Docker/Deployment)", "Abdul Ahad"],
 ]
 
 
@@ -161,7 +161,7 @@ def build_member(cfg, out, toc_entries):
 MEMBERS = [
     {
         "key": "auth",
-        "member_name": "Abdul Ahad",
+        "member_name": "Touseef Abbas",
         "module_title": "Authentication & User Accounts",
         "out": os.path.join(HERE, "CloudDrive_Report_1_Authentication.docx"),
         "feature_intro":
@@ -285,23 +285,16 @@ MEMBERS = [
             "endpoints in backend/main.py; the File and Folder models in backend/models.py. Frontend: "
             "uploadOne / putWithProgress / loadFiles / renderGrid in frontend/app.js.",
         "tools": ["Python 3.12", "FastAPI", "SQLAlchemy", "Amazon S3", "boto3", "SQLite",
-                  "Terraform", "Docker"],
-        "cloud_heading": "6. My Cloud & DevOps Contribution — S3, Terraform & Docker",
-        "cloud_body": "I own the project's cloud storage and its packaging and infrastructure-as-code.",
+                  "Terraform"],
+        "cloud_heading": "6. My Cloud & DevOps Contribution — Amazon S3 & Terraform (IaC)",
+        "cloud_body": "I own the project's cloud storage and its infrastructure-as-code.",
         "cloud_bullets": [
             "An Amazon S3 bucket with versioning and AES-256 encryption, with all public access blocked.",
             "Terraform definitions that provision the S3 bucket and supporting infrastructure as code.",
-            "A Dockerfile that containerizes the whole app; the same image runs locally and on ECS.",
+            "Pre-signed URLs against a private bucket, so files are never publicly exposed.",
         ],
-        "dockerfile":
-            "FROM python:3.12-slim\n"
-            "WORKDIR /app\n"
-            "RUN pip install --no-cache-dir -r requirements.txt\n"
-            "COPY backend ./backend ; COPY frontend ./frontend\n"
-            'CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]',
         "cloud_images": [
             ("s3_bucket.png", 6.2, "Figure 3: Real objects in the S3 bucket (versioning + AES-256)."),
-            ("docker.png", 6.2, "Figure 4: The app running inside a Docker container, serving S3."),
         ],
         "test_headers": ["Test (tests/test_files.py)", "What it checks"],
         "test_rows": [
@@ -315,12 +308,12 @@ MEMBERS = [
         "test_note": "7 automated tests cover this module (tests/test_files.py), all passing in CI.",
         "conclusion":
             "I delivered the cloud storage core — the pre-signed upload/download flow on Amazon S3, the "
-            "pluggable storage layer, and folder and quota management — plus the Terraform and Docker "
-            "packaging that make the application deployable to the cloud.",
+            "pluggable storage layer, and folder and quota management — plus the Terraform "
+            "infrastructure-as-code that provisions the cloud storage.",
     },
     {
         "key": "sharing",
-        "member_name": "Touseef Abbas",
+        "member_name": "Abdul Ahad",
         "module_title": "Sharing & Collaboration",
         "out": os.path.join(HERE, "CloudDrive_Report_3_Sharing.docx"),
         "feature_intro":
@@ -366,23 +359,35 @@ MEMBERS = [
             "Implemented in the sharing endpoints of backend/main.py (create_share, shared_with_me, "
             "shared_download, public_download); the Share model in backend/models.py. Frontend: "
             "openShare / shareWithUser / makePublicLink / loadSharedWithMe in frontend/app.js.",
-        "tools": ["Python 3.12", "FastAPI", "SQLAlchemy", "Render", "Cloudflare Tunnel",
+        "tools": ["Python 3.12", "FastAPI", "Docker", "Amazon ECR", "Render", "Cloudflare Tunnel",
                   "Amazon ECS Fargate", "Application Load Balancer", "Amazon VPC"],
-        "cloud_heading": "6. My Cloud & DevOps Contribution — Deployment & Networking",
-        "cloud_body": "I own getting the application onto the internet and the network that supports it.",
+        "cloud_heading": "6. My Cloud & DevOps Contribution — Docker, Deployment & Networking",
+        "cloud_body":
+            "I own packaging the application into a container and getting it onto the internet, plus the "
+            "network that supports it. The Dockerfile installs dependencies, copies the code, and starts "
+            "the API server:",
         "cloud_bullets": [
+            "A Dockerfile that containerizes the whole app; the same image runs locally and on ECS via ECR.",
             "Deployment to Render (a permanent URL plus a managed PostgreSQL) and a Cloudflare tunnel for demos.",
             "The AWS network: a VPC with public/private subnets and an Application Load Balancer in front of ECS.",
             "The continuous-deployment workflow that builds the image and ships it.",
         ],
+        "dockerfile":
+            "FROM python:3.12-slim\n"
+            "WORKDIR /app\n"
+            "RUN pip install --no-cache-dir -r requirements.txt\n"
+            "COPY backend ./backend ; COPY frontend ./frontend\n"
+            'CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]',
         "cloud_diagram_steps": [
-            ("Local", ["dev / demo"]),
+            ("Local", ["Docker container"]),
             ("Render", ["permanent URL", "+ Postgres"]),
-            ("AWS ECS", ["containers", "behind ALB"]),
+            ("AWS ECS", ["Docker image", "behind ALB"]),
         ],
         "cloud_diagram_caption": "Figure 5: Deployment options (all use Amazon S3 for files).",
-        "cloud_images": [("gh_actions.png", 6.2,
-                          "Figure 6: GitHub Actions — CI and Deploy workflows running green.")],
+        "cloud_images": [
+            ("docker.png", 6.2, "Figure 6: The app running inside a Docker container, serving S3."),
+            ("gh_actions.png", 6.2, "Figure 7: GitHub Actions — CI and Deploy workflows running green."),
+        ],
         "test_headers": ["Test (tests/test_sharing_security.py)", "What it checks"],
         "test_rows": [
             ["share with user", "creates a share for that user"],
@@ -395,7 +400,8 @@ MEMBERS = [
         "conclusion":
             "I delivered the sharing and collaboration features — user-to-user sharing, public expiring "
             "links, and the 'Shared with me' view with secure pre-signed downloads — plus the project's "
-            "deployment (Render / ECS / tunnel) and the network (VPC and load balancer) that put it online.",
+            "containerization (Docker), its deployment (Render / ECS / tunnel) and the network (VPC and "
+            "load balancer) that put it online.",
     },
 ]
 
