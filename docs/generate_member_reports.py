@@ -75,9 +75,9 @@ def detect_pages(pdf_path, titles):
 
 
 TEAM_ROWS = [
-    ["Authentication & User Accounts", "Member 1"],
+    ["Authentication & User Accounts", "Abdul Ahad"],
     ["File Storage & Upload/Download", "Shehriyar Ali Rustam"],
-    ["Sharing & Collaboration", "Member 3"],
+    ["Sharing & Collaboration", "Touseef Abbas"],
 ]
 
 
@@ -161,7 +161,7 @@ def build_member(cfg, out, toc_entries):
 MEMBERS = [
     {
         "key": "auth",
-        "member_name": "Member 1",
+        "member_name": "Abdul Ahad",
         "module_title": "Authentication & User Accounts",
         "out": os.path.join(HERE, "CloudDrive_Report_1_Authentication.docx"),
         "feature_intro":
@@ -320,7 +320,7 @@ MEMBERS = [
     },
     {
         "key": "sharing",
-        "member_name": "Member 3",
+        "member_name": "Touseef Abbas",
         "module_title": "Sharing & Collaboration",
         "out": os.path.join(HERE, "CloudDrive_Report_3_Sharing.docx"),
         "feature_intro":
