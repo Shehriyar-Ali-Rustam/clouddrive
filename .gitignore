@@ -8,3 +8,6 @@ storage_data/
 *.tfstate
 *.tfstate.backup
 .DS_Store
+*.log
+server*.log
+tunnel.log
