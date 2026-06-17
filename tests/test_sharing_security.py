@@ -28,10 +28,10 @@ def test_public_link_download(auth_client):
     assert share.status_code == 200
     token = share.json()["public_token"]
 
-    # anonymous client can resolve + download
-    pub = auth_client.get(f"/api/public/{token}")
-    assert pub.status_code == 200
-    dl_path = pub.json()["download_url"].replace("http://testserver", "")
+    # The public link redirects (302) to a pre-signed download URL.
+    pub = auth_client.get(f"/api/public/{token}", follow_redirects=False)
+    assert pub.status_code in (302, 307)
+    dl_path = pub.headers["location"].replace("http://testserver", "")
     blob = auth_client.get(dl_path)
     assert blob.content == content
 

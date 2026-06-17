@@ -20,7 +20,7 @@ import uuid
 
 from fastapi import FastAPI, Depends, HTTPException, Request, UploadFile, Response
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import FileResponse, StreamingResponse
+from fastapi.responses import FileResponse, RedirectResponse, StreamingResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.orm import Session
@@ -259,7 +259,12 @@ def shared_with_me(
 
 @app.get("/api/public/{token}")
 def public_download(token: str, db: Session = Depends(get_db)):
-    """Anyone with the link can download — until it expires."""
+    """Anyone with the link can download — until it expires.
+
+    Redirects straight to a fresh pre-signed URL so the browser downloads the
+    file (works from any device). The pre-signed URL points at S3 directly,
+    so even the file bytes never touch this server.
+    """
     share = db.query(models.Share).filter(models.Share.public_token == token).first()
     if not share:
         raise HTTPException(404, "Link not found")
@@ -268,7 +273,7 @@ def public_download(token: str, db: Session = Depends(get_db)):
     file = db.query(models.File).filter(models.File.id == share.file_id).first()
     if not file:
         raise HTTPException(404, "File no longer exists")
-    return {"name": file.name, "download_url": storage.presigned_get(file.s3_key, file.name)}
+    return RedirectResponse(url=storage.presigned_get(file.s3_key, file.name))
 
 
 # ======================================================================== #

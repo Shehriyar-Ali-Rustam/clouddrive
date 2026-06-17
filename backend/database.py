@@ -9,10 +9,19 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 from .config import settings
 
-# check_same_thread is a SQLite-only quirk; harmless to compute, ignored by Postgres.
-connect_args = {"check_same_thread": False} if settings.database_url.startswith("sqlite") else {}
+# Managed Postgres providers (Render, Heroku, …) hand out URLs like
+# "postgres://" or "postgresql://". Normalise to the psycopg2 driver SQLAlchemy
+# expects. SQLite URLs are left untouched.
+database_url = settings.database_url
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif database_url.startswith("postgresql://"):
+    database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
-engine = create_engine(settings.database_url, connect_args=connect_args)
+# check_same_thread is a SQLite-only quirk; harmless to compute, ignored by Postgres.
+connect_args = {"check_same_thread": False} if database_url.startswith("sqlite") else {}
+
+engine = create_engine(database_url, connect_args=connect_args)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()
 

@@ -4,6 +4,9 @@ Central configuration, loaded from environment variables / .env file.
 Everything that differs between "running on my laptop" and "running on AWS"
 lives here, so the rest of the code never hard-codes an environment.
 """
+import os
+
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -29,6 +32,15 @@ class Settings(BaseSettings):
     public_api_url: str = "http://localhost:8000"
 
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
+
+    @model_validator(mode="after")
+    def _use_platform_url(self):
+        # Render (and similar hosts) inject the public URL automatically.
+        # Prefer it so share links use the real domain without manual config.
+        platform_url = os.environ.get("RENDER_EXTERNAL_URL")
+        if platform_url:
+            self.public_api_url = platform_url
+        return self
 
 
 settings = Settings()
