@@ -104,13 +104,28 @@ def image(doc, path, width_in, cap):
     caption(doc, cap)
 
 
+def mono(doc, text):
+    """A monospaced code/command block."""
+    p = doc.add_paragraph()
+    p.paragraph_format.space_after = Pt(8)
+    p.paragraph_format.space_before = Pt(2)
+    lines = text.strip("\n").split("\n")
+    for i, ln in enumerate(lines):
+        r = p.add_run(ln + ("\n" if i < len(lines) - 1 else ""))
+        r.font.name = "Consolas"
+        r.font.size = Pt(8.5)
+        r.font.color.rgb = RGBColor(0x0B, 0x30, 0x66)
+    return p
+
+
 # Section titles (H1) that appear in the Table of Contents
 TOC_TITLES = [
     "1. Introduction", "2. Key Features", "3. System Architecture",
     "4. The Pre-signed URL Upload Flow", "5. Data Model",
     "6. Technology Stack — Why Each Tool & Its Benefit", "7. Security Model",
-    "8. User Interface", "9. Cloud Deployment", "10. Testing",
-    "11. CI/CD Pipeline", "12. Cost & Free Tier", "13. Conclusion & Future Work",
+    "8. User Interface", "9. Containerization with Docker",
+    "10. Cloud Storage on Amazon S3", "11. Cloud Deployment", "12. Testing",
+    "13. CI/CD Pipeline", "14. Cost & Free Tier", "15. Conclusion & Future Work",
 ]
 
 
@@ -353,22 +368,56 @@ def build(out=OUT, toc_entries=None):
     image(doc, os.path.join(IMG, "04_public_link.png"), 6.2, "Figure 6: A generated public expiring link.")
     image(doc, os.path.join(IMG, "05_shared_with_me.png"), 6.2, "Figure 7: 'Shared with me' — files another user shared.")
 
-    # 9. Deployment
-    heading(doc, "9. Cloud Deployment")
-    body(doc, "Files are stored in a real Amazon S3 bucket using pre-signed URLs. The application can "
-              "be run or deployed three ways, all sharing the same S3 storage:")
+    # 9. Containerization with Docker
+    heading(doc, "9. Containerization with Docker")
+    body(doc, "The application is packaged as a Docker image so it runs identically on any machine "
+              "and in the cloud. The Dockerfile installs the dependencies, copies the code, and starts "
+              "the API server:")
+    mono(doc,
+         "FROM python:3.12-slim\n"
+         "WORKDIR /app\n"
+         "COPY requirements.txt .\n"
+         "RUN pip install --no-cache-dir -r requirements.txt\n"
+         "COPY backend ./backend\n"
+         "COPY frontend ./frontend\n"
+         "EXPOSE 8000\n"
+         'CMD ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]')
+    body(doc, "The image was built and run as a live container serving the app on real AWS S3:")
+    mono(doc,
+         "$ docker build -t clouddrive-api:latest .\n"
+         "$ docker run -d --name clouddrive -p 8001:8000 \\\n"
+         "      -e STORAGE_BACKEND=s3 -e S3_BUCKET=clouddrive-066496974419 \\\n"
+         "      -v ~/.aws:/root/.aws:ro clouddrive-api:latest")
+    image(doc, os.path.join(IMG, "docker.png"), 6.2,
+          "Figure 8: Docker image built (395 MB) and the container running, serving the app on S3.")
+    body(doc, "This same image is pushed to Amazon ECR and run on ECS Fargate in production — locally "
+              "one container runs the app; in the cloud ECS runs several copies behind the load "
+              "balancer and autoscales them.")
+
+    # 10. Cloud Storage on S3
+    heading(doc, "10. Cloud Storage on Amazon S3")
+    body(doc, "File bytes are stored in a real Amazon S3 bucket, uploaded directly by the browser via "
+              "pre-signed URLs. The bucket has versioning enabled and AES-256 server-side encryption, "
+              "and blocks all public access. The screenshot below verifies the live bucket contents "
+              "and settings via the AWS CLI:")
+    image(doc, os.path.join(IMG, "s3_bucket.png"), 6.2,
+          "Figure 9: Real objects stored in the S3 bucket, with versioning enabled and AES-256 encryption.")
+
+    # 11. Deployment
+    heading(doc, "11. Cloud Deployment")
+    body(doc, "The application can be run or deployed three ways, all sharing the same S3 storage:")
     dep = R.pipeline([
         ("Local", ["SQLite + disk", "or S3 mode"]),
         ("Render", ["Permanent URL", "+ managed Postgres"]),
         ("AWS ECS", ["Docker image,", "autoscaling (Terraform)"]),
     ], box_h=46)
-    image(doc, diagram_png(dep, "diag_deploy"), 6.0, "Figure 8: Deployment options (all use Amazon S3 for files).")
+    image(doc, diagram_png(dep, "diag_deploy"), 6.0, "Figure 10: Deployment options (all use Amazon S3 for files).")
     body(doc, "For demonstrations, a Cloudflare tunnel exposes the local app on a public HTTPS URL so "
               "it can be opened from any device. The full AWS stack is defined in Terraform (validated) "
               "and deploys via the CI/CD pipeline below.")
 
-    # 10. Testing
-    heading(doc, "10. Testing")
+    # 12. Testing
+    heading(doc, "12. Testing")
     body(doc, "Nineteen automated tests (pytest) cover the critical paths and security:")
     add_table(doc, ["Area", "Examples", "Tests"], [
         ["Authentication", "signup, login, wrong password, duplicate email", "6"],
@@ -377,18 +426,24 @@ def build(out=OUT, toc_entries=None):
     ], widths=[Inches(1.6), Inches(3.6), Inches(1.1)])
     body(doc, "All 19 tests pass and run automatically on every push via GitHub Actions.")
 
-    # 11. CI/CD
-    heading(doc, "11. CI/CD Pipeline")
+    # 13. CI/CD
+    heading(doc, "13. CI/CD Pipeline")
+    body(doc, "Two GitHub Actions workflows automate delivery: CI runs the tests on every push, and "
+              "Deploy builds the Docker image, pushes it to Amazon ECR, and rolls it out on ECS.")
     cicd = R.pipeline([
         ("git push", ["Code to GitHub"]),
         ("CI: Tests", ["Run all 19 tests"]),
         ("Build", ["Docker image", "-> Amazon ECR"]),
         ("Deploy", ["Rolling update", "on ECS"]),
     ], box_h=46)
-    image(doc, diagram_png(cicd, "diag_cicd"), 6.2, "Figure 9: Continuous integration & deployment flow.")
+    image(doc, diagram_png(cicd, "diag_cicd"), 6.2, "Figure 11: Continuous integration & deployment flow.")
+    image(doc, os.path.join(IMG, "gh_actions.png"), 6.2,
+          "Figure 12: GitHub Actions — CI and Deploy workflows running green on every push.")
+    image(doc, os.path.join(IMG, "gh_actions_run.png"), 6.2,
+          "Figure 13: A CI run executing the automated test suite.")
 
-    # 12. Cost
-    heading(doc, "12. Cost & Free Tier")
+    # 14. Cost
+    heading(doc, "14. Cost & Free Tier")
     add_table(doc, ["Service", "Cost note"], [
         ["Amazon S3", "Free tier: 5 GB + 20k GETs + 2k PUTs — demo cost ~ $0"],
         ["IAM / ECR", "Free"],
@@ -397,8 +452,8 @@ def build(out=OUT, toc_entries=None):
         ["Render / Tunnel", "Free tiers"],
     ], widths=[Inches(1.9), Inches(4.4)])
 
-    # 13. Conclusion
-    heading(doc, "13. Conclusion & Future Work")
+    # 15. Conclusion
+    heading(doc, "15. Conclusion & Future Work")
     body(doc, "CloudDrive delivers a complete, working and tested cloud application that demonstrates "
               "the key principles of cloud computing — object storage, pre-signed URLs, managed "
               "databases, stateless scalable services, least-privilege security, infrastructure as "
