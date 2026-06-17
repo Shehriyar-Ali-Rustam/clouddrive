@@ -14,7 +14,7 @@ import subprocess
 
 from docx import Document
 from docx.shared import Pt, Inches, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_TAB_ALIGNMENT, WD_TAB_LEADER
 from docx.enum.table import WD_TABLE_ALIGNMENT
 
 from reportlab.graphics import renderPDF
@@ -104,6 +104,63 @@ def image(doc, path, width_in, cap):
     caption(doc, cap)
 
 
+# Section titles (H1) that appear in the Table of Contents
+TOC_TITLES = [
+    "1. Introduction", "2. Key Features", "3. System Architecture",
+    "4. The Pre-signed URL Upload Flow", "5. Data Model",
+    "6. Technology Stack — Why Each Tool & Its Benefit", "7. Security Model",
+    "8. User Interface", "9. Cloud Deployment", "10. Testing",
+    "11. CI/CD Pipeline", "12. Cost & Free Tier", "13. Conclusion & Future Work",
+]
+
+
+def toc_render(doc, entries):
+    """entries: list of (title, page) or None (placeholder pass for pagination)."""
+    p = doc.add_paragraph()
+    r = p.add_run("Table of Contents")
+    r.bold = True
+    r.font.size = Pt(16)
+    r.font.color.rgb = BLUE
+    p.paragraph_format.space_after = Pt(10)
+
+    if entries is None:
+        # pass 1 — reserve one page so pagination matches the final version
+        doc.add_paragraph(" ")
+        doc.add_page_break()
+        return
+
+    for title, page in entries:
+        line = doc.add_paragraph()
+        line.paragraph_format.space_after = Pt(4)
+        # right-aligned tab with a dotted leader -> "Title ......... 3"
+        line.paragraph_format.tab_stops.add_tab_stop(
+            Inches(6.3), WD_TAB_ALIGNMENT.RIGHT, WD_TAB_LEADER.DOTS)
+        run = line.add_run(title)
+        run.font.size = Pt(10.5)
+        run.font.color.rgb = INK
+        pg = line.add_run("\t" + str(page))
+        pg.font.size = Pt(10.5)
+        pg.font.color.rgb = INK
+    doc.add_page_break()
+
+
+def detect_toc_pages(pdf_path):
+    """Find the page number each section heading lands on in the rendered PDF."""
+    from pypdf import PdfReader
+    reader = PdfReader(pdf_path)
+    found = {}
+    for i, page in enumerate(reader.pages, start=1):
+        norm = " ".join((page.extract_text() or "").split())
+        for t in TOC_TITLES:
+            if t in found:
+                continue
+            key = t.split("—")[0].strip()  # tolerate em-dash extraction differences
+            if key in norm:
+                found[t] = i
+    # fall back to sequential if any missed
+    return [(t, found.get(t, "")) for t in TOC_TITLES]
+
+
 def title_page(doc):
     for _ in range(3):
         doc.add_paragraph()
@@ -178,7 +235,7 @@ STACK = [
 ]
 
 
-def build():
+def build(out=OUT, toc_entries=None):
     doc = Document()
     doc.core_properties.title = "CloudDrive — Technical Report"
     doc.core_properties.author = "Shehriyar Ali Rustam"
@@ -189,6 +246,7 @@ def build():
     style.font.size = Pt(10.5)
 
     title_page(doc)
+    toc_render(doc, toc_entries)
 
     # 1. Introduction
     heading(doc, "1. Introduction")
@@ -353,9 +411,23 @@ def build():
     body(doc, "Appendix — Run locally: bash run.sh  ·  Run tests: bash run_tests.sh  ·  "
               "Public demo: bash demo.sh")
 
-    doc.save(OUT)
+    doc.save(out)
+    return out
+
+
+def main():
+    # Pass 1: build with a placeholder TOC, render to PDF, find heading pages.
+    tmp = "/tmp/_cd_report_pass1.docx"
+    build(out=tmp, toc_entries=None)
+    subprocess.run(["libreoffice", "--headless", "--convert-to", "pdf",
+                    "--outdir", "/tmp", tmp], check=True,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    entries = detect_toc_pages("/tmp/_cd_report_pass1.pdf")
+    print("TOC pages:", entries)
+    # Pass 2: build the final doc with the real page numbers.
+    build(out=OUT, toc_entries=entries)
     print("wrote", OUT)
 
 
 if __name__ == "__main__":
-    build()
+    main()
