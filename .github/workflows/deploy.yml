@@ -1,0 +1,66 @@
+# ============================================================
+#  CD — build the API image, push to Amazon ECR, deploy to ECS.
+#  Runs on every push to `main` (after CI passes), or manually.
+#
+#  REQUIRED GitHub repo secrets (Settings → Secrets and variables → Actions):
+#    AWS_ROLE_ARN   ARN of an IAM role this workflow assumes via OIDC
+#                   (recommended), OR use AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY.
+#  REQUIRED repo variables (Settings → Variables):
+#    AWS_REGION     e.g. us-east-1
+#    ECR_REPOSITORY e.g. clouddrive-dev-api   (terraform output)
+#    ECS_CLUSTER    e.g. clouddrive-dev-cluster
+#    ECS_SERVICE    e.g. clouddrive-dev-api
+# ============================================================
+name: Deploy
+
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch: {}   # allows manual "Run workflow" button
+
+# Needed for GitHub OIDC -> AWS (keyless auth, the secure modern way).
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  deploy:
+    name: Build & deploy to ECS
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+
+      - name: Log in to Amazon ECR
+        id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push image
+        env:
+          REGISTRY: ${{ steps.ecr.outputs.registry }}
+          REPOSITORY: ${{ vars.ECR_REPOSITORY }}
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          docker build -t $REGISTRY/$REPOSITORY:$IMAGE_TAG -t $REGISTRY/$REPOSITORY:latest .
+          docker push $REGISTRY/$REPOSITORY:$IMAGE_TAG
+          docker push $REGISTRY/$REPOSITORY:latest
+
+      - name: Force a new ECS deployment (rolling, zero-downtime)
+        run: |
+          aws ecs update-service \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --service "${{ vars.ECS_SERVICE }}" \
+            --force-new-deployment
+
+      - name: Wait for the service to stabilise
+        run: |
+          aws ecs wait services-stable \
+            --cluster "${{ vars.ECS_CLUSTER }}" \
+            --services "${{ vars.ECS_SERVICE }}"

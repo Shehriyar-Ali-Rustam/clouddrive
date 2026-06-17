@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CloudDrive — Scalable File Storage on AWS</title>
+  <link rel="stylesheet" href="style.css" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ===================== AUTH SCREEN ===================== -->
+  <div id="auth-screen" class="auth-wrap">
+    <div class="auth-card">
+      <div class="brand">
+        <div class="logo">☁️</div>
+        <h1>CloudDrive</h1>
+        <p class="tagline">Scalable file storage on AWS S3</p>
+      </div>
+
+      <div class="tabs">
+        <button id="tab-login" class="tab active" onclick="switchTab('login')">Log in</button>
+        <button id="tab-signup" class="tab" onclick="switchTab('signup')">Sign up</button>
+      </div>
+
+      <form id="auth-form" onsubmit="return submitAuth(event)">
+        <label>Email</label>
+        <input type="email" id="email" placeholder="you@university.edu" required />
+        <label>Password</label>
+        <input type="password" id="password" placeholder="••••••••" required minlength="4" />
+        <button type="submit" class="btn-primary" id="auth-btn">Log in</button>
+        <p class="auth-error" id="auth-error"></p>
+      </form>
+
+      <p class="hint">Demo runs fully offline — no AWS account needed.</p>
+    </div>
+  </div>
+
+  <!-- ===================== APP SCREEN ===================== -->
+  <div id="app-screen" class="hidden">
+    <header class="topbar">
+      <div class="topbar-left">
+        <span class="logo-sm">☁️</span>
+        <strong>CloudDrive</strong>
+        <span class="badge" id="storage-badge">storage: —</span>
+      </div>
+      <div class="topbar-right">
+        <span id="user-email" class="user-email"></span>
+        <button class="btn-ghost" onclick="logout()">Log out</button>
+      </div>
+    </header>
+
+    <div class="quota-bar">
+      <div class="quota-track"><div class="quota-fill" id="quota-fill"></div></div>
+      <span class="quota-text" id="quota-text">0 / 0 MB</span>
+    </div>
+
+    <main class="content">
+      <div class="toolbar">
+        <h2>My Files</h2>
+        <div class="toolbar-actions">
+          <button class="btn-secondary" onclick="document.getElementById('file-input').click()">
+            ⬆️ Upload
+          </button>
+          <input type="file" id="file-input" multiple class="hidden" onchange="handleUpload(this.files)" />
+        </div>
+      </div>
+
+      <!-- drag & drop zone -->
+      <div id="dropzone" class="dropzone">
+        <p>📂 Drag &amp; drop files here, or click <strong>Upload</strong></p>
+      </div>
+
+      <div id="upload-progress" class="upload-progress hidden"></div>
+
+      <div class="file-grid" id="file-grid"></div>
+      <div id="empty-state" class="empty-state hidden">
+        <p>No files yet — upload your first file to get started ☁️</p>
+      </div>
+    </main>
+  </div>
+
+  <!-- ===================== SHARE MODAL ===================== -->
+  <div id="share-modal" class="modal-overlay hidden">
+    <div class="modal">
+      <div class="modal-head">
+        <h3>Share file</h3>
+        <button class="modal-close" onclick="closeShare()">✕</button>
+      </div>
+      <p class="modal-file" id="share-file-name"></p>
+
+      <div class="share-row">
+        <label>Share with a user (email)</label>
+        <div class="share-inline">
+          <input type="email" id="share-email" placeholder="friend@university.edu" />
+          <button class="btn-secondary" onclick="shareWithUser()">Share</button>
+        </div>
+      </div>
+
+      <div class="divider"><span>or</span></div>
+
+      <div class="share-row">
+        <label>Public link (expires in hours, blank = never)</label>
+        <div class="share-inline">
+          <input type="number" id="share-expiry" placeholder="24" min="1" />
+          <button class="btn-secondary" onclick="makePublicLink()">Create link</button>
+        </div>
+        <div id="public-link-box" class="public-link hidden">
+          <input type="text" id="public-link" readonly />
+          <button class="btn-ghost" onclick="copyLink()">Copy</button>
+        </div>
+      </div>
+
+      <p class="share-msg" id="share-msg"></p>
+    </div>
+  </div>
+
+  <div id="toast" class="toast hidden"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

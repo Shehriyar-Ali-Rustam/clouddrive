@@ -1,0 +1,170 @@
+/* ============================================================
+   CloudDrive — UI styling
+   A clean, modern dashboard look (Google-Drive-inspired).
+   ============================================================ */
+:root {
+  --bg: #f4f6fb;
+  --surface: #ffffff;
+  --primary: #2563eb;
+  --primary-dark: #1d4ed8;
+  --primary-soft: #e8efff;
+  --text: #1f2937;
+  --muted: #6b7280;
+  --border: #e5e7eb;
+  --danger: #ef4444;
+  --success: #16a34a;
+  --shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: "Inter", system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+}
+
+.hidden { display: none !important; }
+
+/* ---------- Auth ---------- */
+.auth-wrap {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 50%, #38bdf8 100%);
+  padding: 20px;
+}
+.auth-card {
+  background: var(--surface);
+  width: 100%;
+  max-width: 400px;
+  padding: 38px 34px;
+  border-radius: 20px;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25);
+}
+.brand { text-align: center; margin-bottom: 26px; }
+.brand .logo { font-size: 46px; }
+.brand h1 { font-size: 26px; margin-top: 6px; letter-spacing: -0.5px; }
+.tagline { color: var(--muted); font-size: 13px; margin-top: 4px; }
+
+.tabs { display: flex; background: var(--bg); border-radius: 10px; padding: 4px; margin-bottom: 20px; }
+.tab {
+  flex: 1; padding: 9px; border: none; background: transparent;
+  border-radius: 8px; cursor: pointer; font-weight: 600; color: var(--muted);
+  font-family: inherit; font-size: 14px; transition: 0.15s;
+}
+.tab.active { background: var(--surface); color: var(--primary); box-shadow: var(--shadow); }
+
+form label { display: block; font-size: 13px; font-weight: 600; margin: 12px 0 6px; }
+form input {
+  width: 100%; padding: 11px 13px; border: 1px solid var(--border);
+  border-radius: 9px; font-size: 14px; font-family: inherit; transition: 0.15s;
+}
+form input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+
+.btn-primary {
+  width: 100%; margin-top: 20px; padding: 12px; border: none;
+  background: var(--primary); color: #fff; border-radius: 9px;
+  font-weight: 600; font-size: 15px; cursor: pointer; font-family: inherit; transition: 0.15s;
+}
+.btn-primary:hover { background: var(--primary-dark); }
+.auth-error { color: var(--danger); font-size: 13px; margin-top: 12px; text-align: center; min-height: 16px; }
+.hint { text-align: center; color: var(--muted); font-size: 12px; margin-top: 18px; }
+
+/* ---------- Topbar ---------- */
+.topbar {
+  display: flex; align-items: center; justify-content: space-between;
+  background: var(--surface); padding: 14px 28px; box-shadow: var(--shadow);
+  position: sticky; top: 0; z-index: 10;
+}
+.topbar-left { display: flex; align-items: center; gap: 12px; }
+.logo-sm { font-size: 22px; }
+.badge {
+  background: var(--primary-soft); color: var(--primary); font-size: 11px;
+  font-weight: 600; padding: 3px 9px; border-radius: 20px; text-transform: uppercase; letter-spacing: 0.3px;
+}
+.topbar-right { display: flex; align-items: center; gap: 14px; }
+.user-email { color: var(--muted); font-size: 14px; }
+.btn-ghost {
+  border: 1px solid var(--border); background: var(--surface); padding: 7px 14px;
+  border-radius: 8px; cursor: pointer; font-family: inherit; font-size: 13px; font-weight: 500; transition: 0.15s;
+}
+.btn-ghost:hover { background: var(--bg); }
+
+/* ---------- Quota ---------- */
+.quota-bar { display: flex; align-items: center; gap: 14px; padding: 12px 28px; max-width: 1100px; margin: 0 auto; }
+.quota-track { flex: 1; height: 8px; background: var(--border); border-radius: 10px; overflow: hidden; }
+.quota-fill { height: 100%; width: 0; background: linear-gradient(90deg, var(--primary), #38bdf8); transition: width 0.4s; }
+.quota-text { font-size: 12px; color: var(--muted); font-weight: 500; white-space: nowrap; }
+
+/* ---------- Content ---------- */
+.content { max-width: 1100px; margin: 0 auto; padding: 10px 28px 60px; }
+.toolbar { display: flex; align-items: center; justify-content: space-between; margin: 18px 0; }
+.toolbar h2 { font-size: 20px; letter-spacing: -0.3px; }
+.btn-secondary {
+  border: none; background: var(--primary); color: #fff; padding: 10px 18px;
+  border-radius: 9px; cursor: pointer; font-family: inherit; font-weight: 600; font-size: 14px; transition: 0.15s;
+}
+.btn-secondary:hover { background: var(--primary-dark); }
+
+.dropzone {
+  border: 2px dashed var(--border); border-radius: var(--radius); padding: 30px;
+  text-align: center; color: var(--muted); margin-bottom: 18px; transition: 0.15s; background: var(--surface);
+}
+.dropzone.drag { border-color: var(--primary); background: var(--primary-soft); color: var(--primary); }
+
+.upload-progress { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.up-item { background: var(--surface); border-radius: 10px; padding: 10px 14px; box-shadow: var(--shadow); }
+.up-item .up-name { font-size: 13px; font-weight: 500; margin-bottom: 6px; display: flex; justify-content: space-between; }
+.up-track { height: 6px; background: var(--border); border-radius: 6px; overflow: hidden; }
+.up-fill { height: 100%; width: 0; background: var(--success); transition: width 0.2s; }
+
+/* ---------- File grid ---------- */
+.file-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 16px; }
+.file-card {
+  background: var(--surface); border-radius: var(--radius); padding: 18px;
+  box-shadow: var(--shadow); transition: 0.15s; position: relative; border: 1px solid transparent;
+}
+.file-card:hover { transform: translateY(-3px); border-color: var(--primary-soft); }
+.file-icon { font-size: 38px; margin-bottom: 10px; }
+.file-name { font-weight: 600; font-size: 14px; word-break: break-word; margin-bottom: 4px; }
+.file-meta { color: var(--muted); font-size: 12px; }
+.file-actions { display: flex; gap: 6px; margin-top: 14px; }
+.file-actions button {
+  flex: 1; border: 1px solid var(--border); background: var(--surface); border-radius: 7px;
+  padding: 6px; cursor: pointer; font-size: 13px; transition: 0.15s;
+}
+.file-actions button:hover { background: var(--bg); }
+.file-actions .del:hover { background: #fef2f2; border-color: var(--danger); }
+
+.empty-state { text-align: center; color: var(--muted); padding: 60px 20px; }
+
+/* ---------- Modal ---------- */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(15, 23, 42, 0.55);
+  display: grid; place-items: center; z-index: 50; padding: 20px;
+}
+.modal { background: var(--surface); border-radius: 16px; width: 100%; max-width: 440px; padding: 26px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); }
+.modal-head { display: flex; justify-content: space-between; align-items: center; }
+.modal-head h3 { font-size: 18px; }
+.modal-close { border: none; background: transparent; font-size: 18px; cursor: pointer; color: var(--muted); }
+.modal-file { color: var(--primary); font-weight: 600; font-size: 14px; margin: 8px 0 18px; }
+.share-row label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 8px; }
+.share-inline { display: flex; gap: 8px; }
+.share-inline input { flex: 1; padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px; font-family: inherit; font-size: 14px; }
+.divider { text-align: center; margin: 20px 0; position: relative; color: var(--muted); font-size: 12px; }
+.divider::before { content: ""; position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: var(--border); }
+.divider span { background: var(--surface); padding: 0 12px; position: relative; }
+.public-link { display: flex; gap: 8px; margin-top: 10px; }
+.public-link input { flex: 1; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 12px; background: var(--bg); }
+.share-msg { color: var(--success); font-size: 13px; margin-top: 14px; min-height: 16px; text-align: center; }
+
+/* ---------- Toast ---------- */
+.toast {
+  position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+  background: var(--text); color: #fff; padding: 12px 22px; border-radius: 10px;
+  font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); z-index: 100; animation: pop 0.2s;
+}
+@keyframes pop { from { opacity: 0; transform: translate(-50%, 10px); } to { opacity: 1; transform: translate(-50%, 0); } }
