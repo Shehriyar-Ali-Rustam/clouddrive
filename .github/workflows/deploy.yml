@@ -2,9 +2,11 @@
 #  CD — build the API image, push to Amazon ECR, deploy to ECS.
 #  Runs on every push to `main` (after CI passes), or manually.
 #
+#  This workflow SKIPS CLEANLY (green check, no error) until the AWS
+#  secrets below are configured — so an un-provisioned repo stays green.
+#
 #  REQUIRED GitHub repo secrets (Settings → Secrets and variables → Actions):
-#    AWS_ROLE_ARN   ARN of an IAM role this workflow assumes via OIDC
-#                   (recommended), OR use AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY.
+#    AWS_ROLE_ARN   ARN of an IAM role this workflow assumes via OIDC.
 #  REQUIRED repo variables (Settings → Variables):
 #    AWS_REGION     e.g. us-east-1
 #    ECR_REPOSITORY e.g. clouddrive-dev-api   (terraform output)
@@ -27,12 +29,28 @@ jobs:
   deploy:
     name: Build & deploy to ECS
     runs-on: ubuntu-latest
+    env:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
 
     steps:
+      # Gate: is AWS configured? If not, every later step is skipped and the
+      # job still finishes successfully (green), so the repo isn't marked red.
+      - name: Check AWS configuration
+        id: guard
+        run: |
+          if [ -z "$AWS_ROLE_ARN" ]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            echo "::notice title=Deploy skipped::AWS secrets not configured — skipping build & deploy. Add AWS_ROLE_ARN to enable."
+          else
+            echo "configured=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout code
+        if: steps.guard.outputs.configured == 'true'
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
+        if: steps.guard.outputs.configured == 'true'
         uses: aws-actions/configure-aws-credentials@v4
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
@@ -40,9 +58,11 @@ jobs:
 
       - name: Log in to Amazon ECR
         id: ecr
+        if: steps.guard.outputs.configured == 'true'
         uses: aws-actions/amazon-ecr-login@v2
 
       - name: Build, tag, and push image
+        if: steps.guard.outputs.configured == 'true'
         env:
           REGISTRY: ${{ steps.ecr.outputs.registry }}
           REPOSITORY: ${{ vars.ECR_REPOSITORY }}
@@ -53,6 +73,7 @@ jobs:
           docker push $REGISTRY/$REPOSITORY:latest
 
       - name: Force a new ECS deployment (rolling, zero-downtime)
+        if: steps.guard.outputs.configured == 'true'
         run: |
           aws ecs update-service \
             --cluster "${{ vars.ECS_CLUSTER }}" \
@@ -60,6 +81,7 @@ jobs:
             --force-new-deployment
 
       - name: Wait for the service to stabilise
+        if: steps.guard.outputs.configured == 'true'
         run: |
           aws ecs wait services-stable \
             --cluster "${{ vars.ECS_CLUSTER }}" \
