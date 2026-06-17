@@ -11,6 +11,7 @@ const API = ""; // same origin (served by FastAPI)
 let token = localStorage.getItem("cd_token") || null;
 let authMode = "login";
 let shareFileId = null;
+let currentView = "mine"; // "mine" or "shared"
 
 // ---------- helpers ----------
 function api(path, opts = {}) {
@@ -138,6 +139,10 @@ async function loadFiles() {
   grid.innerHTML = "";
 
   empty.classList.toggle("hidden", files.length > 0);
+  if (files.length === 0) {
+    empty.querySelector("p").textContent =
+      "No files yet — upload your first file to get started ☁️";
+  }
 
   for (const f of files) {
     const card = document.createElement("div");
@@ -158,6 +163,51 @@ async function loadFiles() {
 function escapeHtml(s) {
   return s.replace(/[&<>"']/g, (c) =>
     ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+}
+
+// ---------- view switching (My Files vs Shared with me) ----------
+function switchView(view) {
+  currentView = view;
+  document.getElementById("view-mine").classList.toggle("active", view === "mine");
+  document.getElementById("view-shared").classList.toggle("active", view === "shared");
+  // Upload + drag-drop only make sense for your own files.
+  const showUpload = view === "mine";
+  document.querySelector(".toolbar-actions").style.display = showUpload ? "" : "none";
+  document.getElementById("dropzone").style.display = showUpload ? "" : "none";
+  if (view === "mine") loadFiles();
+  else loadSharedWithMe();
+}
+
+async function loadSharedWithMe() {
+  const res = await api("/api/shared-with-me");
+  const files = res.ok ? await res.json() : [];
+  const grid = document.getElementById("file-grid");
+  const empty = document.getElementById("empty-state");
+  grid.innerHTML = "";
+  empty.classList.toggle("hidden", files.length > 0);
+  if (files.length === 0) {
+    empty.querySelector("p").textContent = "Nothing shared with you yet 🤝";
+  }
+
+  for (const f of files) {
+    const card = document.createElement("div");
+    card.className = "file-card";
+    card.innerHTML = `
+      <div class="file-icon">${iconFor(f.name)}</div>
+      <div class="file-name">${escapeHtml(f.name)}</div>
+      <div class="file-meta">${fmtSize(f.size)} · shared</div>
+      <div class="file-actions">
+        <button onclick="sharedDownload(${f.id})" title="Download">⬇️ Download</button>
+      </div>`;
+    grid.appendChild(card);
+  }
+}
+
+async function sharedDownload(id) {
+  const res = await api(`/api/files/${id}/shared-download`);
+  if (!res.ok) return toast("Download failed");
+  const { download_url } = await res.json();
+  window.open(download_url, "_blank");
 }
 
 // THE PRE-SIGNED UPLOAD FLOW (3 steps)

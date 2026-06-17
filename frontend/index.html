@@ -58,7 +58,10 @@
 
     <main class="content">
       <div class="toolbar">
-        <h2>My Files</h2>
+        <div class="view-tabs">
+          <button id="view-mine" class="view-tab active" onclick="switchView('mine')">My Files</button>
+          <button id="view-shared" class="view-tab" onclick="switchView('shared')">Shared with me</button>
+        </div>
         <div class="toolbar-actions">
           <button class="btn-secondary" onclick="document.getElementById('file-input').click()">
             ⬆️ Upload
@@ -67,7 +70,7 @@
         </div>
       </div>
 
-      <!-- drag & drop zone -->
+      <!-- drag & drop zone (only for My Files) -->
       <div id="dropzone" class="dropzone">
         <p>📂 Drag &amp; drop files here, or click <strong>Upload</strong></p>
       </div>

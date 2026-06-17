@@ -257,6 +257,31 @@ def shared_with_me(
     return rows
 
 
+@app.get("/api/files/{file_id}/shared-download")
+def shared_download(
+    file_id: int,
+    user: models.User = Depends(auth.get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Download a file that another user shared with me (not one I own)."""
+    share = (
+        db.query(models.Share)
+        .filter(
+            models.Share.file_id == file_id,
+            models.Share.shared_with_user_id == user.id,
+        )
+        .first()
+    )
+    if not share:
+        raise HTTPException(404, "File not shared with you")
+    if share.expires_at and _now() > share.expires_at.replace(tzinfo=datetime.timezone.utc):
+        raise HTTPException(410, "Share expired")
+    file = db.query(models.File).filter(models.File.id == file_id).first()
+    if not file:
+        raise HTTPException(404, "File no longer exists")
+    return {"download_url": storage.presigned_get(file.s3_key, file.name)}
+
+
 @app.get("/api/public/{token}")
 def public_download(token: str, db: Session = Depends(get_db)):
     """Anyone with the link can download — until it expires.
