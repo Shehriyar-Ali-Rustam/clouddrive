@@ -12,6 +12,7 @@ let token = localStorage.getItem("cd_token") || null;
 let authMode = "login";
 let shareFileId = null;
 let currentView = "mine"; // "mine" or "shared"
+let filesById = {};       // cache of the files currently shown, keyed by id
 
 // ---------- helpers ----------
 function api(path, opts = {}) {
@@ -113,7 +114,7 @@ async function enterApp() {
   document.getElementById("storage-badge").textContent = "storage: " + health.storage;
 
   updateQuota(user);
-  loadFiles();
+  switchView("mine"); // always start on My Files (resets tabs after re-login)
 }
 
 function updateQuota(user) {
@@ -133,32 +134,54 @@ async function refreshQuota() {
 // ---------- files ----------
 async function loadFiles() {
   const res = await api("/api/files");
-  const files = res.ok ? await res.json() : [];
+  renderGrid(res.ok ? await res.json() : [], false);
+}
+
+// Renders the file grid. Action buttons carry data-attributes only — the click
+// is handled by one delegated listener (set up at boot). This avoids breaking
+// on filenames that contain quotes/apostrophes.
+function renderGrid(files, shared) {
+  filesById = {};
   const grid = document.getElementById("file-grid");
   const empty = document.getElementById("empty-state");
   grid.innerHTML = "";
 
   empty.classList.toggle("hidden", files.length > 0);
-  if (files.length === 0) {
-    empty.querySelector("p").textContent =
-      "No files yet — upload your first file to get started ☁️";
-  }
+  empty.querySelector("p").textContent = shared
+    ? "Nothing shared with you yet 🤝"
+    : "No files yet — upload your first file to get started ☁️";
 
   for (const f of files) {
+    filesById[f.id] = f;
+    const actions = shared
+      ? `<button data-action="sdl" data-id="${f.id}" title="Download">⬇️ Download</button>`
+      : `<button data-action="dl" data-id="${f.id}" title="Download">⬇️</button>
+         <button data-action="share" data-id="${f.id}" title="Share">🔗</button>
+         <button class="del" data-action="del" data-id="${f.id}" title="Delete">🗑️</button>`;
     const card = document.createElement("div");
     card.className = "file-card";
     card.innerHTML = `
       <div class="file-icon">${iconFor(f.name)}</div>
       <div class="file-name">${escapeHtml(f.name)}</div>
-      <div class="file-meta">${fmtSize(f.size)}</div>
-      <div class="file-actions">
-        <button onclick="download(${f.id})" title="Download">⬇️</button>
-        <button onclick="openShare(${f.id}, '${escapeHtml(f.name)}')" title="Share">🔗</button>
-        <button class="del" onclick="removeFile(${f.id})" title="Delete">🗑️</button>
-      </div>`;
+      <div class="file-meta">${fmtSize(f.size)}${shared ? " · shared" : ""}</div>
+      <div class="file-actions">${actions}</div>`;
     grid.appendChild(card);
   }
 }
+
+// One delegated click handler for all file-card action buttons.
+document.getElementById("file-grid").addEventListener("click", (e) => {
+  const btn = e.target.closest("button[data-action]");
+  if (!btn) return;
+  const id = parseInt(btn.dataset.id, 10);
+  const f = filesById[id];
+  switch (btn.dataset.action) {
+    case "dl": download(id); break;
+    case "sdl": sharedDownload(id); break;
+    case "share": openShare(id, f ? f.name : ""); break;
+    case "del": removeFile(id); break;
+  }
+});
 
 function escapeHtml(s) {
   return s.replace(/[&<>"']/g, (c) =>
@@ -180,27 +203,7 @@ function switchView(view) {
 
 async function loadSharedWithMe() {
   const res = await api("/api/shared-with-me");
-  const files = res.ok ? await res.json() : [];
-  const grid = document.getElementById("file-grid");
-  const empty = document.getElementById("empty-state");
-  grid.innerHTML = "";
-  empty.classList.toggle("hidden", files.length > 0);
-  if (files.length === 0) {
-    empty.querySelector("p").textContent = "Nothing shared with you yet 🤝";
-  }
-
-  for (const f of files) {
-    const card = document.createElement("div");
-    card.className = "file-card";
-    card.innerHTML = `
-      <div class="file-icon">${iconFor(f.name)}</div>
-      <div class="file-name">${escapeHtml(f.name)}</div>
-      <div class="file-meta">${fmtSize(f.size)} · shared</div>
-      <div class="file-actions">
-        <button onclick="sharedDownload(${f.id})" title="Download">⬇️ Download</button>
-      </div>`;
-    grid.appendChild(card);
-  }
+  renderGrid(res.ok ? await res.json() : [], true);
 }
 
 async function sharedDownload(id) {
@@ -212,6 +215,10 @@ async function sharedDownload(id) {
 
 // THE PRE-SIGNED UPLOAD FLOW (3 steps)
 async function uploadOne(file) {
+  // The pre-signed URL is signed for a specific Content-Type, so the PUT MUST
+  // send exactly the same value or S3 rejects it with 403. Compute it once.
+  const contentType = file.type || "application/octet-stream";
+
   // Step 1: ask the API for an upload ticket (pre-signed URL)
   const initRes = await api("/api/files/init", {
     method: "POST",
@@ -219,7 +226,7 @@ async function uploadOne(file) {
     body: JSON.stringify({
       name: file.name,
       size: file.size,
-      content_type: file.type || "application/octet-stream",
+      content_type: contentType,
     }),
   });
   if (!initRes.ok) {
@@ -229,18 +236,19 @@ async function uploadOne(file) {
   const ticket = await initRes.json();
 
   // Step 2: PUT the bytes straight to storage using the pre-signed URL
-  await putWithProgress(ticket.upload_url, file);
+  await putWithProgress(ticket.upload_url, file, contentType);
 
   // Step 3: tell the API the bytes landed
   await api(`/api/files/${ticket.file_id}/complete`, { method: "POST" });
 }
 
-function putWithProgress(url, file) {
+function putWithProgress(url, file, contentType) {
   return new Promise((resolve, reject) => {
     const row = addProgressRow(file.name);
     const xhr = new XMLHttpRequest();
     xhr.open("PUT", url);
-    if (file.type) xhr.setRequestHeader("Content-Type", file.type);
+    // Must match the Content-Type the URL was signed with (see uploadOne).
+    xhr.setRequestHeader("Content-Type", contentType);
     xhr.upload.onprogress = (e) => {
       if (e.lengthComputable) row.style.width = (e.loaded / e.total) * 100 + "%";
     };
@@ -311,20 +319,25 @@ function closeShare() {
 
 async function shareWithUser() {
   const email = document.getElementById("share-email").value.trim();
-  if (!email) return;
+  const msgEl = document.getElementById("share-msg");
+  if (!email) {
+    msgEl.style.color = "var(--danger)";
+    msgEl.textContent = "Enter an email address first.";
+    return;
+  }
   const res = await api("/api/shares", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ file_id: shareFileId, email }),
   });
-  const msg = document.getElementById("share-msg");
   if (res.ok) {
-    msg.style.color = "var(--success)";
-    msg.textContent = "✅ Shared with " + email;
+    msgEl.style.color = "var(--success)";
+    msgEl.textContent = "✅ Shared with " + email;
+    document.getElementById("share-email").value = "";
   } else {
     const d = await res.json().catch(() => ({}));
-    msg.style.color = "var(--danger)";
-    msg.textContent = d.detail || "Could not share";
+    msgEl.style.color = "var(--danger)";
+    msgEl.textContent = d.detail || "Could not share";
   }
 }
 

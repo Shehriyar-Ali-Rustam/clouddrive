@@ -218,7 +218,11 @@ def create_share(
     elif payload.email:
         target = db.query(models.User).filter(models.User.email == payload.email).first()
         if not target:
-            raise HTTPException(404, "No user with that email")
+            raise HTTPException(
+                404,
+                "No CloudDrive account uses that email. They must sign up first — "
+                "or use a public link to share with anyone.",
+            )
         share.shared_with_user_id = target.id
     else:
         raise HTTPException(400, "Provide an email or set public=true")
