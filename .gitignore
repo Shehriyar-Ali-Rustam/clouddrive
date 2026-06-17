@@ -11,3 +11,6 @@ storage_data/
 *.log
 server*.log
 tunnel.log
+
+# LibreOffice lock files
+.~lock.*#
